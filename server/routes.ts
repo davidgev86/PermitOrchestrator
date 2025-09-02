@@ -255,7 +255,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/orgs/:orgId/projects", requireAuth, requireOrgAccess, async (req: any, res) => {
     try {
       const projectData = insertProjectSchema.extend({
-        location: insertLocationSchema
+        location: insertLocationSchema.omit({ ahjKey: true })
       }).parse(req.body);
 
       // Create location first
