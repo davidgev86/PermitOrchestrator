@@ -1,0 +1,16 @@
+fee_schedules:
+  v2025:
+    base_fees:
+      residential_kitchen_remodel: 150
+      residential_bathroom_remodel: 100
+    valuation_fees:
+      - range: [0, 2000]
+        rate: 0.012
+      - range: [2001, 15000]
+        rate: 0.018
+      - range: [15001, null]
+        rate: 0.025
+    additional_fees:
+      plan_review: 85
+      inspection_fee: 60
+      energy_review: 40

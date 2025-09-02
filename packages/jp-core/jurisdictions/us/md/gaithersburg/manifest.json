@@ -1,0 +1,14 @@
+{
+  "id": "us/md/gaithersburg",
+  "name": "City of Gaithersburg, MD",
+  "coverage": { 
+    "state": "MD", 
+    "county": "Montgomery", 
+    "city": "Gaithersburg" 
+  },
+  "portal": { 
+    "kind": "custom", 
+    "baseUrl": "https://gaithersburg.seamlessdocs.com", 
+    "auth": "form" 
+  }
+}

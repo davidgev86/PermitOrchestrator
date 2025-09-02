@@ -1,0 +1,29 @@
+inspection_types:
+  - type: "framing"
+    label: "Framing Inspection"
+    prerequisites: ["rough_electrical", "rough_plumbing"]
+    scheduling_window:
+      min_days_out: 2
+      max_days_out: 14
+      available_days: [1, 2, 3, 4, 5] # Monday-Friday
+  - type: "electrical_rough"
+    label: "Electrical Rough-In"
+    prerequisites: []
+    scheduling_window:
+      min_days_out: 1
+      max_days_out: 10
+      available_days: [1, 2, 3, 4, 5]
+  - type: "plumbing_rough"
+    label: "Plumbing Rough-In"
+    prerequisites: []
+    scheduling_window:
+      min_days_out: 1
+      max_days_out: 10
+      available_days: [1, 2, 3, 4, 5]
+  - type: "final"
+    label: "Final Inspection"
+    prerequisites: ["framing", "electrical_final", "plumbing_final"]
+    scheduling_window:
+      min_days_out: 3
+      max_days_out: 21
+      available_days: [1, 2, 3, 4, 5]

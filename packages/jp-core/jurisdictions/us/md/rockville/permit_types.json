@@ -1,0 +1,18 @@
+{
+  "residential_kitchen_remodel": {
+    "label": "Residential Kitchen Remodel",
+    "forms": ["building_permit_application.pdf", "residential_alteration_form.pdf"],
+    "attachments": ["construction_plans.pdf", "site_plan.pdf", "contractor_license.pdf", "insurance_certificate.pdf"],
+    "fields": {
+      "valuation_usd": { "min": 1500, "required": true },
+      "contractor_license_no": { "pattern": "^MHIC[0-9]{6}$", "required": true },
+      "energy_compliance": { "required": true }
+    },
+    "submission": { 
+      "method": "portal", 
+      "portalDriver": "playwright", 
+      "feeSchedule": "v2025", 
+      "slaDays": 12 
+    }
+  }
+}

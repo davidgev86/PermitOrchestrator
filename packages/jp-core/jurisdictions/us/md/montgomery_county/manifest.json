@@ -1,0 +1,14 @@
+{
+  "id": "us/md/montgomery_county",
+  "name": "Montgomery County Department of Permitting Services",
+  "coverage": { 
+    "state": "MD", 
+    "county": "Montgomery",
+    "notes": "Covers unincorporated areas including Germantown" 
+  },
+  "portal": { 
+    "kind": "accela_like", 
+    "baseUrl": "https://permits.montgomerycountymd.gov", 
+    "auth": "form" 
+  }
+}

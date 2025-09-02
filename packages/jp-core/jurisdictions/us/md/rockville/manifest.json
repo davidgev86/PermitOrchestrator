@@ -1,0 +1,14 @@
+{
+  "id": "us/md/rockville",
+  "name": "City of Rockville, MD",
+  "coverage": { 
+    "state": "MD", 
+    "county": "Montgomery", 
+    "city": "Rockville" 
+  },
+  "portal": { 
+    "kind": "custom", 
+    "baseUrl": "https://rockville.viewpointcloud.com", 
+    "auth": "form" 
+  }
+}

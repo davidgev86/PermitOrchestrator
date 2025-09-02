@@ -1,0 +1,19 @@
+{
+  "residential_kitchen_remodel": {
+    "label": "Residential Kitchen Alteration",
+    "forms": ["building_permit_application.pdf", "residential_alteration_checklist.pdf"],
+    "attachments": ["architectural_plans.pdf", "site_plan.pdf", "contractor_license.pdf", "insurance_acord25.pdf", "energy_compliance.pdf"],
+    "fields": {
+      "valuation_usd": { "min": 1000, "required": true },
+      "contractor_license_no": { "pattern": "^MHIC[0-9]{6}$", "required": true },
+      "energy_code_compliance": { "required": true },
+      "structural_changes": { "required": true }
+    },
+    "submission": { 
+      "method": "portal", 
+      "portalDriver": "playwright", 
+      "feeSchedule": "fy2025", 
+      "slaDays": 20 
+    }
+  }
+}
