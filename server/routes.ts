@@ -254,9 +254,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/orgs/:orgId/projects", requireAuth, requireOrgAccess, async (req: any, res) => {
     try {
+      console.log("Received project data:", JSON.stringify(req.body, null, 2));
+      
       const projectData = insertProjectSchema.extend({
         location: insertLocationSchema.omit({ ahjKey: true })
       }).parse(req.body);
+
+      console.log("Parsed project data:", JSON.stringify(projectData, null, 2));
 
       // Create location first
       const location = await storage.createLocation({
@@ -288,6 +292,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ ...project, location });
     } catch (error) {
+      console.error("Project creation error:", error);
       res.status(400).json({ error: error instanceof Error ? error.message : "Invalid request" });
     }
   });
