@@ -62,14 +62,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET route for magic link verification (when user clicks link)
-  app.get("/auth/verify", async (req, res) => {
+  // API route for magic link verification (frontend will call this)
+  app.post("/api/auth/verify", async (req, res) => {
     try {
-      const { token } = z.object({ token: z.string() }).parse(req.query);
+      const { token } = z.object({ token: z.string() }).parse(req.body);
       
       const userEmail = await verifyMagicLink(token);
       if (!userEmail) {
-        return res.status(400).send("<html><body><h1>Invalid or expired magic link</h1><p>Please try signing in again.</p></body></html>");
+        return res.status(401).json({ error: "Invalid or expired magic link" });
       }
 
       // Create session
@@ -82,10 +82,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expiresAt
       });
 
-      // Redirect to frontend with session token
-      res.redirect(`/?token=${session.token}&email=${encodeURIComponent(session.userEmail)}`);
+      res.json({ 
+        sessionToken: session.token,
+        userEmail: session.userEmail,
+        expiresAt: session.expiresAt
+      });
     } catch (error) {
-      res.status(400).send("<html><body><h1>Error</h1><p>Invalid magic link format.</p></body></html>");
+      res.status(400).json({ error: error instanceof Error ? error.message : "Invalid request" });
     }
   });
 
