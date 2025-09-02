@@ -10,16 +10,31 @@ import { Building2, FileCheck, Package, Send, ClipboardCheck } from "lucide-reac
 export default function Home() {
   const [, setLocation] = useLocation();
   
-  const { data: user, isLoading } = useQuery({
+  const { data: user, isLoading, refetch } = useQuery({
     queryKey: ["/api/user"],
     queryFn: getCurrentUser,
   });
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    // Handle magic link authentication
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const email = urlParams.get('email');
+    
+    if (token && email) {
+      // Store the session token and email
+      localStorage.setItem('sessionToken', token);
+      localStorage.setItem('userEmail', email);
+      
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Refetch user data
+      refetch();
+    } else if (!isLoading && !user) {
       setLocation("/auth");
     }
-  }, [user, isLoading, setLocation]);
+  }, [user, isLoading, setLocation, refetch]);
 
   if (isLoading) {
     return <div className="min-h-screen bg-background">Loading...</div>;
