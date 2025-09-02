@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
@@ -19,6 +20,7 @@ type EmailFormData = z.infer<typeof emailSchema>;
 export default function Auth() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+
 
   const emailForm = useForm<EmailFormData>({
     resolver: zodResolver(emailSchema),
@@ -49,10 +51,8 @@ export default function Auth() {
         title: "Welcome!",
         description: "You've been logged in successfully",
       });
-      // Use a small delay to ensure localStorage is set before navigation
-      setTimeout(() => {
-        setLocation("/");
-      }, 100);
+      // Navigate to home immediately
+      setLocation("/");
     },
     onError: (error) => {
       toast({
