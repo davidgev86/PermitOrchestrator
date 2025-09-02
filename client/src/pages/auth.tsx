@@ -27,15 +27,20 @@ export default function Auth() {
 
   const loginMutation = useMutation({
     mutationFn: async (data: EmailFormData) => {
-      // Create a simple session directly without email verification
-      const sessionToken = crypto.randomUUID();
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
       
-      return {
-        sessionToken,
-        userEmail: data.email,
-        expiresAt: expiresAt.toISOString()
-      };
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Login failed");
+      }
+      
+      return response.json();
     },
     onSuccess: (data) => {
       localStorage.setItem("sessionToken", data.sessionToken);

@@ -6,6 +6,7 @@ import { loadJurisdictionPack } from "./services/jp-loader";
 import { sendMagicLink, verifyMagicLink } from "./services/auth";
 // import { enqueuJob } from "./services/job-queue";
 import { z } from "zod";
+import crypto from "crypto";
 import { 
   insertProjectSchema, 
   insertPermitCaseSchema, 
@@ -50,6 +51,51 @@ const requireOrgAccess = async (req: any, res: any, next: any) => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Simple login endpoint that creates user session and organization if needed
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { email } = z.object({ email: z.string().email() }).parse(req.body);
+      
+      // Create session
+      const sessionToken = crypto.randomUUID();
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+      
+      const session = await storage.createAuthSession({
+        userEmail: email,
+        token: sessionToken,
+        expiresAt
+      });
+
+      // Check if user has an organization, create one if not
+      const existingOrgs = await storage.getOrgsByUserEmail(email);
+      let org;
+      
+      if (existingOrgs.length === 0) {
+        // Create a default organization for the user
+        const orgName = `${email.split('@')[0]}'s Organization`;
+        org = await storage.createOrg({ name: orgName });
+        
+        // Add user as owner of the organization
+        await storage.createOrgUser({
+          userEmail: email,
+          role: "owner",
+          orgId: org.id
+        });
+      } else {
+        org = existingOrgs[0];
+      }
+
+      res.json({ 
+        sessionToken: session.token,
+        userEmail: session.userEmail,
+        expiresAt: session.expiresAt,
+        orgId: org.id
+      });
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Invalid request" });
+    }
+  });
+
   // Auth endpoints
   app.post("/api/auth/magiclink", async (req, res) => {
     try {
