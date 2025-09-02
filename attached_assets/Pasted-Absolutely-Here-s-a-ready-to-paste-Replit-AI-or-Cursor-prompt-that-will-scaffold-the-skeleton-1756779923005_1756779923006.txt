@@ -1,0 +1,373 @@
+Absolutely. Here’s a **ready-to-paste Replit AI (or Cursor) prompt** that will scaffold the skeleton for your Permit Orchestrator with **Gaithersburg, Rockville, Germantown (unincorporated → Montgomery County DPS)**, and **Montgomery County DPS** as the first AHJs.
+
+---
+
+# Replit Prompt — “Permit Orchestrator (Gaithersburg/Rockville/Montgomery County)”
+
+**You are building a thin-slice MVP of a contractor-side permit orchestrator.**
+Goal: one screen from **estimate → permit pre-check → auto-package → submit/track → inspections** for the DC-MD corridor pilot.
+
+## Scope & Architecture
+
+* **Monorepo (pnpm workspaces)**
+
+  * `apps/web` — React + TypeScript (Vite), Tailwind + shadcn/ui, PWA offline (service worker), React Query.
+  * `apps/api` — Node.js (TypeScript) + Express, Postgres (Prisma), Redis + BullMQ for background jobs, Zod validation.
+  * `workers/automation` — Playwright workers for portal submission + status polling; pdf-lib for form fill; sharp for images.
+  * `packages/jp-core` — Jurisdiction Pack (JP) loader, schema, fee calculators, driver interfaces.
+* **Storage**
+
+  * Postgres for primary data.
+  * Redis for queues.
+  * S3-compatible (e.g., Cloudflare R2) for files and portal screenshots.
+* **Auth**
+
+  * Magic link (email) with minimal roles: `owner`, `staff`, `read_only`.
+* **Multitenancy**
+
+  * `Org` separates contractor accounts. All core entities are org-scoped.
+* **Security & audit**
+
+  * Append-only `events` table, checksum’d artifacts, no raw secrets in logs.
+
+## Deliverables
+
+1. **File tree** and runnable dev environment (Docker optional).
+2. **DB schema + migrations** for core entities.
+3. **REST API** (JSON) with Zod-validated inputs/outputs.
+4. **Job workers** for `submit_permit`, `poll_status`, `schedule_inspection`.
+5. **JP system** with 3 seed packs:
+
+   * `us/md/montgomery_county` (Authority for unincorporated areas incl. **Germantown**)
+   * `us/md/gaithersburg` (incorporated city AHJ)
+   * `us/md/rockville` (incorporated city AHJ)
+6. **Web app**
+
+   * Onboarding, Org switcher, Project dashboard, Pre-Check → Auto-Package → Submit → Timeline.
+   * Inspection scheduling wizard; .ics invite generator.
+   * Read-only share link for homeowners/inspectors (no login).
+7. **Admin tools**
+
+   * Impersonate org, JP validator, event viewer, re-run job.
+8. **Seed script**
+
+   * Demo org, sample project at a Gaithersburg address and a Germantown address (mapped to county).
+9. **Basic tests**
+
+   * JP schema validation, submit/poll flow with a **fake portal driver**.
+
+## Environments & Config
+
+Create `.env` files with:
+
+```
+DATABASE_URL=postgres://...
+REDIS_URL=redis://...
+S3_ENDPOINT=...
+S3_BUCKET=permit-orchestrator
+S3_ACCESS_KEY=...
+S3_SECRET_KEY=...
+AUTH_SECRET=...
+MAGICLINK_FROM=noreply@permitsync.local
+MAGICLINK_SMTP_URL=smtp://user:pass@smtp.example.com:587
+```
+
+## Data Model (Prisma)
+
+Create models (org-scoped where noted):
+
+```prisma
+model Org {
+  id        String   @id @default(cuid())
+  name      String
+  users     OrgUser[]
+  projects  Project[]
+  createdAt DateTime @default(now())
+}
+
+model OrgUser {
+  id        String   @id @default(cuid())
+  userEmail String   @unique
+  role      Role
+  orgId     String
+  org       Org      @relation(fields: [orgId], references: [id])
+}
+
+enum Role { owner staff read_only }
+
+model Project {
+  id          String   @id @default(cuid())
+  orgId       String
+  org         Org      @relation(fields: [orgId], references: [id])
+  name        String
+  locationId  String
+  location    Location @relation(fields: [locationId], references: [id])
+  valuationUSD Int?
+  tradeTags   String[] // ["electrical","plumbing","structural"]
+  cases       PermitCase[]
+  createdAt   DateTime @default(now())
+}
+
+model Location {
+  id        String   @id @default(cuid())
+  address1  String
+  address2  String?
+  city      String
+  state     String
+  postal    String
+  geoJson   Json?
+  parcelId  String?
+  ahjKey    String   // maps to JP key, e.g. "us/md/gaithersburg"
+}
+
+model PermitCase {
+  id             String   @id @default(cuid())
+  orgId          String
+  org            Org      @relation(fields: [orgId], references: [id])
+  projectId      String
+  project        Project  @relation(fields: [projectId], references: [id])
+  ahjKey         String   // e.g., "us/md/montgomery_county"
+  permitType     String   // e.g., "residential_kitchen_remodel"
+  status         CaseStatus
+  portalCaseId   String?
+  feeEstimateUSD Int?
+  forms          Json     // manifest of required forms
+  attachments    Json     // expected attachments (plans, COI, license)
+  events         Event[]
+  inspections    Inspection[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+enum CaseStatus { draft precheck_ready packaged submitted rfi pending approved rejected closed }
+
+model Inspection {
+  id           String   @id @default(cuid())
+  caseId       String
+  case         PermitCase @relation(fields: [caseId], references: [id])
+  type         String   // "framing","final","electrical_rough"
+  requestedAt  DateTime?
+  scheduledFor DateTime?
+  result       String?  // "pass"/"fail"/"partial"
+  artifacts    Json?    // photo URIs, notes
+  createdAt    DateTime @default(now())
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  orgId     String
+  org       Org      @relation(fields: [orgId], references: [id])
+  kind      String   // "plans","site_plan","license","insurance_acord25"
+  uri       String   // S3 URI
+  checksum  String
+  meta      Json?
+  createdAt DateTime @default(now())
+}
+
+model Event {
+  id         String   @id @default(cuid())
+  orgId      String
+  org        Org      @relation(fields: [orgId], references: [id])
+  entity     String   // "PermitCase","Inspection","Document"
+  entityId   String
+  actor      String   // user email or "system"
+  action     String   // "PRECHECK_DONE","PACKAGE_BUILT","SUBMITTED","POLL_STATUS","RFI_RECEIVED"
+  before     Json?
+  after      Json?
+  evidence   String?  // S3 URI to screenshot or PDF
+  createdAt  DateTime @default(now())
+}
+```
+
+## JP System (packages/jp-core)
+
+* Provide a Zod-validated schema and loader for **Jurisdiction Packs**.
+* A JP folder contains:
+
+  * `manifest.json` — id, name, coverage, portal type, auth requirements.
+  * `permit_types.json` — per-type required forms, attachments, validation rules.
+  * `fees.yaml` — fee schedules or calculator expressions.
+  * `inspections.yaml` — common inspection types and scheduling constraints.
+  * `driver.ts` — optional Playwright automation (submit, poll, requestInspection).
+
+**Types (TS):**
+
+```ts
+export interface JurisdictionPack {
+  id: string; // "us/md/gaithersburg"
+  name: string;
+  coverage: { state: "MD"; county: "Montgomery"; city?: "Gaithersburg" | "Rockville"; notes?: string };
+  portal: { kind: "none" | "email" | "upload" | "accela_like" | "custom"; baseUrl?: string; auth?: "none"|"basic"|"form" };
+  permitTypes: Record<string, PermitTypeDef>;
+  fees: FeeDef[];
+  inspections: InspectionDef[];
+}
+
+export interface PermitTypeDef {
+  label: string;
+  forms: string[];        // templates under /forms
+  attachments: string[];  // expected kinds under /attachments
+  fields: Record<string, FieldRule>;
+  submission: { method: "portal"|"email"|"in_person"; portalDriver?: string; feeSchedule: string; slaDays?: number };
+}
+
+export interface PortalDriver {
+  submit(pkg: SubmissionPackage): Promise<{ portalCaseId: string; receiptUrl?: string }>;
+  pollStatus(portalCaseId: string): Promise<PortalStatus>;
+  requestInspection(portalCaseId: string, opts: { type: string; window: { start: Date; end: Date } }): Promise<{ confirmationId: string }>;
+}
+```
+
+## Seed Jurisdiction Packs
+
+Create three packs (with placeholders you can fill in later):
+
+```
+packages/jp-core/jurisdictions/
+  us/md/montgomery_county/
+    manifest.json
+    permit_types.json
+    fees.yaml
+    inspections.yaml
+    driver.ts
+  us/md/gaithersburg/
+    manifest.json
+    permit_types.json
+    fees.yaml
+    inspections.yaml
+    driver.ts
+  us/md/rockville/
+    manifest.json
+    permit_types.json
+    fees.yaml
+    inspections.yaml
+    driver.ts
+```
+
+**Important mapping:**
+
+* **Germantown** is **unincorporated** → use `us/md/montgomery_county` JP automatically when `city === "Germantown"`.
+
+**Example `manifest.json` (Gaithersburg)**
+
+```json
+{
+  "id": "us/md/gaithersburg",
+  "name": "City of Gaithersburg, MD",
+  "coverage": { "state": "MD", "county": "Montgomery", "city": "Gaithersburg" },
+  "portal": { "kind": "custom", "baseUrl": "https://<portal-url>", "auth": "form" }
+}
+```
+
+**Example `permit_types.json` (slice)**
+
+```json
+{
+  "residential_kitchen_remodel": {
+    "label": "Residential Kitchen Remodel",
+    "forms": ["application_main.pdf"],
+    "attachments": ["plans.pdf", "site_plan.pdf", "contractor_license.pdf", "insurance_acord25.pdf"],
+    "fields": {
+      "valuation_usd": { "min": 1000 },
+      "contractor_license_no": { "pattern": "^[A-Z0-9-]{6,}$" }
+    },
+    "submission": { "method": "portal", "portalDriver": "playwright", "feeSchedule": "v2025", "slaDays": 15 }
+  }
+}
+```
+
+**Example `driver.ts` (interface stub)**
+
+```ts
+import { PortalDriver, SubmissionPackage, PortalStatus } from "../types";
+
+export const driver: PortalDriver = {
+  async submit(pkg: SubmissionPackage) {
+    // Use Playwright: login, create application, fill fields, upload files, capture receipt screenshot to S3
+    return { portalCaseId: "GTH-CASE-PLACEHOLDER", receiptUrl: undefined };
+  },
+  async pollStatus(portalCaseId: string): Promise<PortalStatus> {
+    // Navigate to case page, read status text, upload screenshot to S3
+    return { status: "In Review", lastUpdated: new Date(), raw: {} as any };
+  },
+  async requestInspection(portalCaseId, opts) {
+    // Navigate scheduling UI; return confirmation ID; upload screenshot
+    return { confirmationId: "CONF-PLACEHOLDER" };
+  }
+};
+export default driver;
+```
+
+## API Endpoints (apps/api)
+
+* `POST /auth/magiclink` → email login link
+* `POST /auth/consume` → exchange token for session
+* `GET /org` / `POST /org`
+* `GET /projects` / `POST /projects`
+* `GET /locations/resolve` → address → AHJ (`ahjKey`) using simple resolver (if city ∈ {Gaithersburg, Rockville} map to city JP, else if county=Montgomery and city=Germantown map to `us/md/montgomery_county`)
+* `POST /cases` → create PermitCase for `projectId` + `ahjKey` + `permitType`
+* `POST /cases/:id/precheck` → JP rules → checklist + fee estimate + required docs
+* `POST /cases/:id/package` → fill PDFs (pdf-lib), validate attachments (sharp), zip + manifest
+* `POST /cases/:id/submit` → enqueue `submit_permit`
+* `GET /cases/:id/timeline` → events
+* `POST /cases/:id/poll` → enqueue `poll_status` now
+* `POST /cases/:id/inspections` → suggest windows; enqueue `schedule_inspection`
+* `GET /share/:token` → read-only view (timeline + artifacts)
+* `POST /upload` → S3 signed URL for plans/photos
+
+## Jobs (workers/automation)
+
+* `submit_permit` — loads JP driver, runs Playwright, stores screenshots, emits `SUBMITTED`
+* `poll_status` — runs JP `pollStatus`, emits `POLL_STATUS` (and `RFI_RECEIVED` if detected)
+* `schedule_inspection` — attempts driver scheduling; else returns instructions; emits `INSPECTION_SCHEDULED`
+
+## Web UI (apps/web)
+
+* **Pages**
+
+  * `/onboarding` (org name, invite team, add license & insurance docs)
+  * `/projects` (list, create; attach location; auto-resolve AHJ)
+  * `/projects/:id/cases/:caseId` with steps:
+
+    1. Pre-Check (JP checklist + fee estimate)
+    2. Auto-Package (show required docs, form fill results, download ZIP)
+    3. Submit (driver or instructions)
+    4. Track (timeline, RFIs, status; portal screenshots)
+    5. Inspections (wizard + .ics)
+  * `/admin` (impersonate org, JP validator, event viewer)
+* **Components**
+
+  * Checklist, FeeCard, Timeline (events), UploadDropzone (S3), ScreenshotLightbox, ICSButton
+* **PWA**
+
+  * Service worker caches shell + allows offline notes/photos; sync queue on reconnect.
+
+## Tests
+
+* JP schema validation (zod)
+* End-to-end fake driver: package → submit → poll transitions status to “In Review”
+* API zod contracts
+
+## Seed Script
+
+* Create demo org `“D&I Contracting (Demo)”`
+* User `demo@local.test`
+* Two projects:
+
+  * `123 Maple Ave, Gaithersburg, MD` → resolves to `us/md/gaithersburg`
+  * `45 Sunrise Dr, Germantown, MD` → resolves to `us/md/montgomery_county`
+* One `residential_kitchen_remodel` case each; run Pre-Check and build a dummy package (use placeholder PDFs).
+
+## Non-functional Requirements
+
+* Throttle portal automation; randomize delays; store **screenshot receipts** on submit/poll/schedule.
+* Event log is canonical history; every state change emits an Event with `before/after`.
+* Respect portal ToS; if automation not permitted, return **manual instructions** fallback (print/email).
+* Basic access logging; redact secrets in logs; encrypt stored tokens.
+
+---
+
+**Build now.** Generate the monorepo, install dependencies, create migrations, and provide:
+
+* Run scripts (`dev:web`, `dev:api`, `dev:workers`, `db:migrate`, `seed`).
+* A **README** with setup steps, env variables, and how to run the **fake portal** E2E demo.
