@@ -27,7 +27,6 @@ export default function Auth() {
 
   const loginMutation = useMutation({
     mutationFn: async (data: EmailFormData) => {
-      console.log("Making login request...", data);
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
@@ -36,24 +35,12 @@ export default function Auth() {
         body: JSON.stringify(data),
       });
       
-      console.log("Response status:", response.status);
-      console.log("Response content-type:", response.headers.get("content-type"));
-      
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Error response:", errorText);
-        throw new Error("Login failed");
+        const error = await response.json();
+        throw new Error(error.error || "Login failed");
       }
       
-      const responseText = await response.text();
-      console.log("Response text:", responseText.substring(0, 200));
-      
-      try {
-        return JSON.parse(responseText);
-      } catch (e) {
-        console.error("Failed to parse JSON:", e);
-        throw new Error("Invalid response format");
-      }
+      return response.json();
     },
     onSuccess: (data) => {
       localStorage.setItem("sessionToken", data.sessionToken);

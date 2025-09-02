@@ -14,15 +14,19 @@ export async function getCurrentUser(): Promise<User | null> {
     return null;
   }
 
-  // In a real implementation, you might want to validate the token with the server
-  // For now, we'll trust the local storage
   try {
-    // You could add a /api/me endpoint to validate the session
-    return {
-      email: userEmail,
-      sessionToken,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    };
+    const response = await fetch("/api/user", {
+      headers: getAuthHeader(),
+    });
+
+    if (!response.ok) {
+      // Clear invalid session
+      localStorage.removeItem("sessionToken");
+      localStorage.removeItem("userEmail");
+      return null;
+    }
+
+    return await response.json();
   } catch (error) {
     // Clear invalid session
     localStorage.removeItem("sessionToken");
