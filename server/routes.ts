@@ -29,6 +29,7 @@ const requireAuth = async (req: any, res: any, next: any) => {
   }
 
   req.userEmail = session.userEmail;
+  req.session = session;
   next();
 };
 
