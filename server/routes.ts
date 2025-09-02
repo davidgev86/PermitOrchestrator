@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { resolveAHJ } from "./services/location";
 import { loadJurisdictionPack } from "./services/jp-loader";
 import { sendMagicLink, verifyMagicLink } from "./services/auth";
-import { enqueuJob } from "./services/job-queue";
+// import { enqueuJob } from "./services/job-queue";
 import { z } from "zod";
 import { 
   insertProjectSchema, 
@@ -12,6 +12,7 @@ import {
   insertLocationSchema,
   insertInspectionSchema 
 } from "@shared/schema";
+import { insertOrgSchema } from "@shared/schema";
 
 // Session middleware
 const requireAuth = async (req: any, res: any, next: any) => {

@@ -10,12 +10,13 @@ import RecentActivity from "@/components/project/recent-activity";
 import QuickActions from "@/components/project/quick-actions";
 import MobileNavigation from "@/components/layout/mobile-navigation";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import { Button } from "@/components/ui/button";
 
 export default function ProjectDetail() {
   const [match, params] = useRoute("/projects/:id");
   const projectId = params?.id;
 
-  const { data: project, isLoading } = useQuery({
+  const { data: project = {}, isLoading } = useQuery({
     queryKey: ["/api/projects", projectId],
     enabled: !!projectId,
   });

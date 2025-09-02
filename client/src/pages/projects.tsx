@@ -4,7 +4,7 @@ import Navigation from "@/components/layout/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, MapPin, DollarSign } from "lucide-react";
+import { Plus, MapPin, DollarSign, Building2 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { queryClient } from "@/lib/queryClient";
 
@@ -21,7 +21,7 @@ export default function Projects() {
     enabled: !!user,
   });
 
-  const { data: projects, isLoading } = useQuery({
+  const { data: projects = [], isLoading } = useQuery({
     queryKey: ["/api/orgs", orgs?.[0]?.id, "projects"],
     enabled: !!orgs?.[0]?.id,
   });
