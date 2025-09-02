@@ -10,14 +10,11 @@ import ProjectDetail from "@/pages/project-detail";
 import ProjectNew from "@/pages/project-new";
 import Onboarding from "@/pages/onboarding";
 import Auth from "@/pages/auth";
-import AuthVerify from "@/pages/auth-verify";
-
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/auth" component={Auth} />
-      <Route path="/auth/verify" component={AuthVerify} />
       <Route path="/onboarding" component={Onboarding} />
       <Route path="/projects" component={Projects} />
       <Route path="/projects/new" component={ProjectNew} />
