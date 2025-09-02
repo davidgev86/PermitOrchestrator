@@ -44,7 +44,10 @@ export default function Auth() {
         title: "Welcome!",
         description: "You've been logged in successfully",
       });
-      setLocation("/");
+      // Use a small delay to ensure localStorage is set before navigation
+      setTimeout(() => {
+        setLocation("/");
+      }, 100);
     },
     onError: (error) => {
       toast({

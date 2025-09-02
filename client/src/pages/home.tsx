@@ -16,25 +16,10 @@ export default function Home() {
   });
 
   useEffect(() => {
-    // Handle magic link authentication
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    const email = urlParams.get('email');
-    
-    if (token && email) {
-      // Store the session token and email
-      localStorage.setItem('sessionToken', token);
-      localStorage.setItem('userEmail', email);
-      
-      // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-      
-      // Refetch user data
-      refetch();
-    } else if (!isLoading && !user) {
+    if (!isLoading && !user) {
       setLocation("/auth");
     }
-  }, [user, isLoading, setLocation, refetch]);
+  }, [user, isLoading, setLocation]);
 
   if (isLoading) {
     return <div className="min-h-screen bg-background">Loading...</div>;
