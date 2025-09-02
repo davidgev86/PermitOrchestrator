@@ -54,26 +54,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Simple login endpoint that creates user session and organization if needed
   app.post("/api/auth/login", async (req, res) => {
     try {
+      console.log("Login request received:", req.body);
       const { email } = z.object({ email: z.string().email() }).parse(req.body);
+      console.log("Email validated:", email);
       
       // Create session
       const sessionToken = crypto.randomUUID();
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
       
+      console.log("Creating session...");
       const session = await storage.createAuthSession({
         userEmail: email,
         token: sessionToken,
         expiresAt
       });
+      console.log("Session created:", session.token);
 
       // Check if user has an organization, create one if not
+      console.log("Checking for existing orgs...");
       const existingOrgs = await storage.getOrgsByUserEmail(email);
       let org;
       
       if (existingOrgs.length === 0) {
+        console.log("No existing org, creating new one...");
         // Create a default organization for the user
         const orgName = `${email.split('@')[0]}'s Organization`;
         org = await storage.createOrg({ name: orgName });
+        console.log("Org created:", org.id);
         
         // Add user as owner of the organization
         await storage.createOrgUser({
@@ -81,17 +88,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           role: "owner",
           orgId: org.id
         });
+        console.log("User added to org");
       } else {
         org = existingOrgs[0];
+        console.log("Using existing org:", org.id);
       }
 
-      res.json({ 
+      const result = { 
         sessionToken: session.token,
         userEmail: session.userEmail,
         expiresAt: session.expiresAt,
         orgId: org.id
-      });
+      };
+      
+      console.log("Sending response:", result);
+      res.setHeader('Content-Type', 'application/json');
+      res.status(200).json(result);
     } catch (error) {
+      console.error("Login error:", error);
+      res.setHeader('Content-Type', 'application/json');
       res.status(400).json({ error: error instanceof Error ? error.message : "Invalid request" });
     }
   });
