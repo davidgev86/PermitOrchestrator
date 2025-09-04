@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { resolveAHJ } from "./services/location";
 import { loadJurisdictionPack } from "./services/jp-loader";
 import { sendMagicLink, verifyMagicLink } from "./services/auth";
-// import { enqueuJob } from "./services/job-queue";
+import { enqueuJob } from "./services/job-queue";
 import { z } from "zod";
 import crypto from "crypto";
 import { 
@@ -98,7 +98,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get current user endpoint
-  app.get("/api/user", requireAuth, async (req, res) => {
+  app.get("/api/user", requireAuth, async (req: any, res) => {
     try {
       const session = req.session;
       if (!session) {
@@ -256,9 +256,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log("Received project data:", JSON.stringify(req.body, null, 2));
       
-      const projectData = insertProjectSchema.extend({
+      // Define client request schema (omit server-generated fields)
+      const clientProjectSchema = insertProjectSchema.omit({ 
+        orgId: true, 
+        locationId: true 
+      }).extend({
         location: insertLocationSchema.omit({ ahjKey: true })
-      }).parse(req.body);
+      });
+      
+      const projectData = clientProjectSchema.parse(req.body);
 
       console.log("Parsed project data:", JSON.stringify(projectData, null, 2));
 
