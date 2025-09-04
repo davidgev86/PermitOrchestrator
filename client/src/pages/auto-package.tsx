@@ -210,17 +210,17 @@ export default function AutoPackage() {
                     )}
 
                     <div className="flex justify-between items-center pt-4">
-                      <div className="flex space-x-2">
+                      <div className="flex flex-col sm:flex-row gap-2 w-full">
                         <Button
                           onClick={() => handlePackageCase(project)}
                           disabled={!canPackage(project) || packageMutation.isPending}
                           size="sm"
-                          className="flex items-center space-x-2"
+                          className="flex items-center justify-center space-x-1 text-xs px-3 py-2 flex-1 sm:flex-none"
                           data-testid={`button-package-${project.id}`}
                         >
-                          <Package className="h-4 w-4" />
+                          <Package className="h-3 w-3" />
                           <span>
-                            {packageMutation.isPending ? "Packaging..." : "Create Package"}
+                            {packageMutation.isPending ? "Packaging..." : "Create"}
                           </span>
                         </Button>
                         
@@ -229,11 +229,11 @@ export default function AutoPackage() {
                             onClick={() => handleViewPackage(project)}
                             variant="outline"
                             size="sm"
-                            className="flex items-center space-x-2"
+                            className="flex items-center justify-center space-x-1 text-xs px-3 py-2 flex-1 sm:flex-none"
                             data-testid={`button-view-package-${project.id}`}
                           >
-                            <Eye className="h-4 w-4" />
-                            <span>View Package</span>
+                            <Eye className="h-3 w-3" />
+                            <span>View</span>
                           </Button>
                         )}
                       </div>
