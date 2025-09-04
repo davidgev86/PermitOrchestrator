@@ -39,20 +39,16 @@ export default function PreCheck() {
         status: "draft"
       };
       
-      return apiRequest(`/api/orgs/${orgId}/cases`, {
-        method: "POST",
-        body: JSON.stringify(caseData)
-      });
+      const res = await apiRequest("POST", "/api/orgs/" + orgId + "/cases", caseData);
+      return res.json();
     }
   });
 
   // Mutation to run pre-check
   const precheckMutation = useMutation({
     mutationFn: async (caseId: string) => {
-      return apiRequest(`/api/cases/${caseId}/precheck`, {
-        method: "POST",
-        body: JSON.stringify({})
-      });
+      const res = await apiRequest("POST", `/api/cases/${caseId}/precheck`, {});
+      return res.json();
     },
     onSuccess: () => {
       toast({
