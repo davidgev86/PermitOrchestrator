@@ -19,10 +19,10 @@ export async function loadJurisdictionPack(ahjKey: string): Promise<Jurisdiction
     const permitTypes = JSON.parse(permitTypesContent);
 
     // Load fees (simplified - in real implementation would parse YAML)
-    const fees = []; // TODO: Load from fees.yaml
+    const fees: any[] = []; // TODO: Load from fees.yaml
 
     // Load inspections (simplified - in real implementation would parse YAML)
-    const inspections = []; // TODO: Load from inspections.yaml
+    const inspections: any[] = []; // TODO: Load from inspections.yaml
 
     return {
       id: manifest.id,

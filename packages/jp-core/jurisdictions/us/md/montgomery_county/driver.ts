@@ -1,4 +1,4 @@
-import { PortalDriver, SubmissionPackage, PortalStatus } from "../../types";
+import { PortalDriver, SubmissionPackage, PortalStatus } from "../../../types";
 
 export const driver: PortalDriver = {
   async submit(pkg: SubmissionPackage): Promise<{ portalCaseId: string; receiptUrl?: string }> {
