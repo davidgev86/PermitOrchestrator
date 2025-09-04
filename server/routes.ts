@@ -350,6 +350,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update project
+  app.put("/api/projects/:id", requireAuth, async (req: any, res) => {
+    try {
+      const project = await storage.getProject(req.params.id);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Check org access
+      const orgUser = await storage.getOrgUser(req.userEmail, project.orgId);
+      if (!orgUser) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Validate update data
+      const updateData = insertProjectSchema.omit({ orgId: true, locationId: true }).partial().parse(req.body);
+      
+      const updatedProject = await storage.updateProject(req.params.id, updateData);
+      
+      // Create audit event
+      await storage.createEvent({
+        orgId: project.orgId,
+        entity: "Project",
+        entityId: project.id,
+        actor: req.userEmail,
+        action: "PROJECT_UPDATED",
+        before: project,
+        after: updatedProject
+      });
+
+      res.json(updatedProject);
+    } catch (error) {
+      console.error("Project update error:", error);
+      res.status(400).json({ error: error instanceof Error ? error.message : "Invalid request" });
+    }
+  });
+
+  // Delete project
+  app.delete("/api/projects/:id", requireAuth, async (req: any, res) => {
+    try {
+      const project = await storage.getProject(req.params.id);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Check org access
+      const orgUser = await storage.getOrgUser(req.userEmail, project.orgId);
+      if (!orgUser) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      await storage.deleteProject(req.params.id);
+      
+      // Create audit event
+      await storage.createEvent({
+        orgId: project.orgId,
+        entity: "Project", 
+        entityId: project.id,
+        actor: req.userEmail,
+        action: "PROJECT_DELETED",
+        before: project
+      });
+
+      res.status(204).send();
+    } catch (error) {
+      console.error("Project deletion error:", error);
+      res.status(500).json({ error: "Failed to delete project" });
+    }
+  });
+
   // Permit Case endpoints
   app.post("/api/orgs/:orgId/cases", requireAuth, requireOrgAccess, async (req: any, res) => {
     try {

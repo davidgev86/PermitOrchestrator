@@ -55,6 +55,7 @@ export interface IStorage {
   getProjectsByOrg(orgId: string): Promise<Project[]>;
   createProject(project: InsertProject): Promise<Project>;
   updateProject(id: string, updates: Partial<InsertProject>): Promise<Project>;
+  deleteProject(id: string): Promise<void>;
   
   // Permit Cases
   getPermitCase(id: string): Promise<PermitCase | undefined>;
@@ -172,6 +173,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(projects.id, id))
       .returning();
     return result;
+  }
+
+  async deleteProject(id: string): Promise<void> {
+    await db.delete(projects).where(eq(projects.id, id));
   }
 
   // Permit Cases
