@@ -12,6 +12,7 @@ import Onboarding from "@/pages/onboarding";
 import Auth from "@/pages/auth";
 import PreCheck from "@/pages/pre-check";
 import AutoPackage from "@/pages/auto-package";
+import SubmitTrack from "@/pages/submit-track";
 function Router() {
   return (
     <Switch>
@@ -23,6 +24,7 @@ function Router() {
       <Route path="/projects/:id" component={ProjectDetail} />
       <Route path="/pre-check" component={PreCheck} />
       <Route path="/auto-package" component={AutoPackage} />
+      <Route path="/submit-track" component={SubmitTrack} />
       <Route component={NotFound} />
     </Switch>
   );
