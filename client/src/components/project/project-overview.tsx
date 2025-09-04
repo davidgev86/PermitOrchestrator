@@ -2,12 +2,80 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Play } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 interface ProjectOverviewProps {
   project: any;
 }
 
 export default function ProjectOverview({ project }: ProjectOverviewProps) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  // Mutation to create a permit case if one doesn't exist
+  const createCaseMutation = useMutation({
+    mutationFn: async () => {
+      const orgId = project.orgId;
+      const caseData = {
+        projectId: project.id,
+        permitType: "residential_kitchen_remodel", // Default permit type
+        ahjKey: project.location?.ahjKey || "us/md/gaithersburg",
+        status: "draft"
+      };
+      
+      return apiRequest(`/api/orgs/${orgId}/cases`, {
+        method: "POST",
+        body: JSON.stringify(caseData)
+      });
+    }
+  });
+
+  // Mutation to run pre-check
+  const precheckMutation = useMutation({
+    mutationFn: async (caseId: string) => {
+      return apiRequest(`/api/cases/${caseId}/precheck`, {
+        method: "POST",
+        body: JSON.stringify({})
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Pre-check completed",
+        description: "All validation checks have been run successfully",
+      });
+      // Refresh project data to get updated case status
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", project.id] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Pre-check failed",
+        description: error.message || "Failed to run pre-check validation",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleRunPrecheck = async () => {
+    try {
+      let caseId = project.cases?.[0]?.id;
+      
+      // If no case exists, create one first
+      if (!caseId) {
+        const newCase = await createCaseMutation.mutateAsync();
+        caseId = newCase.id;
+      }
+      
+      // Run pre-check on the case
+      await precheckMutation.mutateAsync(caseId);
+    } catch (error) {
+      console.error("Pre-check error:", error);
+    }
+  };
+
+  const isLoading = createCaseMutation.isPending || precheckMutation.isPending;
+
   return (
     <Card>
       <CardHeader>
@@ -71,10 +139,12 @@ export default function ProjectOverview({ project }: ProjectOverviewProps) {
 
         <Button 
           className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+          onClick={handleRunPrecheck}
+          disabled={isLoading}
           data-testid="button-run-precheck"
         >
           <Play className="h-4 w-4 mr-2" />
-          Run Pre-Check
+          {isLoading ? "Running Pre-Check..." : "Run Pre-Check"}
         </Button>
       </CardContent>
     </Card>
