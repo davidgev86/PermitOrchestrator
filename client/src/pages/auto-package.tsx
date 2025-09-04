@@ -2,15 +2,19 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Package, CheckCircle, AlertTriangle, Clock } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Package, CheckCircle, AlertTriangle, Clock, Eye, FileText, Paperclip } from "lucide-react";
 import Navigation from "@/components/layout/navigation";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { getCurrentUser } from "@/lib/auth";
+import { useState } from "react";
 
 export default function AutoPackage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [selectedPackage, setSelectedPackage] = useState<any>(null);
+  const [isPackageModalOpen, setIsPackageModalOpen] = useState(false);
 
   const { data: user } = useQuery({
     queryKey: ["/api/user"],
@@ -111,6 +115,22 @@ export default function AutoPackage() {
     return status === "precheck_ready";
   };
 
+  const isPackaged = (project: any) => {
+    const status = project.cases?.[0]?.status;
+    return status === "packaged";
+  };
+
+  // Query to fetch package details
+  const { data: packageDetails, refetch: refetchPackage } = useQuery({
+    queryKey: ["/api/cases", selectedPackage?.cases?.[0]?.id, "package"],
+    enabled: !!selectedPackage?.cases?.[0]?.id && isPackageModalOpen,
+  });
+
+  const handleViewPackage = (project: any) => {
+    setSelectedPackage(project);
+    setIsPackageModalOpen(true);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -190,18 +210,33 @@ export default function AutoPackage() {
                     )}
 
                     <div className="flex justify-between items-center pt-4">
-                      <Button
-                        onClick={() => handlePackageCase(project)}
-                        disabled={!canPackage(project) || packageMutation.isPending}
-                        size="sm"
-                        className="flex items-center space-x-2"
-                        data-testid={`button-package-${project.id}`}
-                      >
-                        <Package className="h-4 w-4" />
-                        <span>
-                          {packageMutation.isPending ? "Packaging..." : "Create Package"}
-                        </span>
-                      </Button>
+                      <div className="flex space-x-2">
+                        <Button
+                          onClick={() => handlePackageCase(project)}
+                          disabled={!canPackage(project) || packageMutation.isPending}
+                          size="sm"
+                          className="flex items-center space-x-2"
+                          data-testid={`button-package-${project.id}`}
+                        >
+                          <Package className="h-4 w-4" />
+                          <span>
+                            {packageMutation.isPending ? "Packaging..." : "Create Package"}
+                          </span>
+                        </Button>
+                        
+                        {isPackaged(project) && (
+                          <Button
+                            onClick={() => handleViewPackage(project)}
+                            variant="outline"
+                            size="sm"
+                            className="flex items-center space-x-2"
+                            data-testid={`button-view-package-${project.id}`}
+                          >
+                            <Eye className="h-4 w-4" />
+                            <span>View Package</span>
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -209,6 +244,105 @@ export default function AutoPackage() {
             ))}
           </div>
         )}
+
+        {/* Package Details Modal */}
+        <Dialog open={isPackageModalOpen} onOpenChange={setIsPackageModalOpen}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center space-x-2">
+                <Package className="h-5 w-5" />
+                <span>Package Details</span>
+              </DialogTitle>
+              <DialogDescription>
+                Package contents for {selectedPackage?.name}
+              </DialogDescription>
+            </DialogHeader>
+            
+            {packageDetails?.packageManifest && (
+              <div className="space-y-6">
+                {/* Package Info */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="font-semibold text-sm text-gray-700">Jurisdiction</h4>
+                    <p className="text-sm">{packageDetails.packageManifest.jurisdiction}</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-sm text-gray-700">Permit Type</h4>
+                    <p className="text-sm">{packageDetails.packageManifest.permitType}</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-sm text-gray-700">Packaged At</h4>
+                    <p className="text-sm">
+                      {new Date(packageDetails.packageManifest.packagedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-sm text-gray-700">Case ID</h4>
+                    <p className="text-sm font-mono">{packageDetails.packageManifest.caseId}</p>
+                  </div>
+                </div>
+
+                {/* Required Forms */}
+                <div>
+                  <h4 className="font-semibold text-gray-700 mb-3 flex items-center space-x-2">
+                    <FileText className="h-4 w-4" />
+                    <span>Required Forms</span>
+                  </h4>
+                  <div className="space-y-2">
+                    {packageDetails.packageManifest.forms?.map((form: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                        <div>
+                          <p className="font-medium text-sm">{form.title}</p>
+                          <p className="text-xs text-gray-600">{form.description}</p>
+                        </div>
+                        <Badge variant="outline" className="text-xs">
+                          {form.required ? "Required" : "Optional"}
+                        </Badge>
+                      </div>
+                    )) || (
+                      <p className="text-sm text-gray-500">No forms specified</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Required Attachments */}
+                <div>
+                  <h4 className="font-semibold text-gray-700 mb-3 flex items-center space-x-2">
+                    <Paperclip className="h-4 w-4" />
+                    <span>Required Attachments</span>
+                  </h4>
+                  <div className="space-y-2">
+                    {packageDetails.packageManifest.attachments?.map((attachment: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                        <div>
+                          <p className="font-medium text-sm">{attachment.title}</p>
+                          <p className="text-xs text-gray-600">{attachment.description}</p>
+                          {attachment.fileTypes && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              Accepted: {attachment.fileTypes.join(", ")}
+                            </p>
+                          )}
+                        </div>
+                        <Badge variant="outline" className="text-xs">
+                          {attachment.required ? "Required" : "Optional"}
+                        </Badge>
+                      </div>
+                    )) || (
+                      <p className="text-sm text-gray-500">No attachments specified</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {!packageDetails && (
+              <div className="text-center py-8">
+                <Package className="mx-auto h-12 w-12 text-gray-400" />
+                <p className="mt-2 text-sm text-gray-500">Loading package details...</p>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

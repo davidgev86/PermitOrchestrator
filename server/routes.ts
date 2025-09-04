@@ -595,6 +595,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get package details for a packaged case
+  app.get("/api/cases/:id/package", requireAuth, async (req: any, res) => {
+    try {
+      const permitCase = await storage.getPermitCase(req.params.id);
+      if (!permitCase) {
+        return res.status(404).json({ error: "Permit case not found" });
+      }
+
+      // Check org access
+      const orgUser = await storage.getOrgUser(req.userEmail, permitCase.orgId);
+      if (!orgUser) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      if (permitCase.status !== "packaged") {
+        return res.status(400).json({ error: "Case has not been packaged yet" });
+      }
+
+      // Load jurisdiction pack to recreate package manifest
+      const jp = await loadJurisdictionPack(permitCase.ahjKey);
+      const permitTypeDef = jp.permitTypes[permitCase.permitType];
+
+      const packageManifest = {
+        caseId: permitCase.id,
+        jurisdiction: jp.name,
+        permitType: permitTypeDef.label,
+        forms: permitTypeDef.forms,
+        attachments: permitTypeDef.attachments,
+        packagedAt: permitCase.updatedAt
+      };
+
+      res.json({ packageManifest, case: permitCase });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get package details" });
+    }
+  });
+
   app.post("/api/cases/:id/submit", requireAuth, async (req: any, res) => {
     try {
       const permitCase = await storage.getPermitCase(req.params.id);
